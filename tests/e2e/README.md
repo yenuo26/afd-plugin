@@ -4,15 +4,17 @@ These tests validate DeepSeek-V2-Lite on real GPU or Ascend NPU hardware and
 Qwen3 MoE on real GPU hardware. Each default gate runs four scenarios:
 
 - `baseline-graph`
-- `afd-eager`
-- `afd-graph`
-- `afd-graph-dbo`
+- `afd-eager-2a2f`
+- `afd-graph-2a2f`
+- `afd-graph-dbo-2a2f`
 
 Each scenario evaluates the first 7 GSM8K samples. If `AFD_E2E_DEVICES` is set,
 that value is used as-is; otherwise the defaults are:
 
-- `0,1,2,3` for the default scenarios. AFD uses the first two for Attention
-  and the third for FFN; `baseline-graph` uses all four for DP4/TP1/EP4.
+- `0,1,2,3` for the gate scenarios. The 2A2F AFD cases use the first two for
+  Attention DP2/TP1 and the last two for FFN DP2/TP1/EP2; `baseline-graph`
+  uses all four for DP4/TP1/EP4.
+- The 2A1F local cases use the first two for Attention and the third for FFN.
 
 Tests run sequentially and must not skip. Every GSM8K evaluation uses 8
 few-shot examples and a 4096-token maximum model length.
@@ -53,12 +55,12 @@ export AFD_E2E_BACKEND=npu
 Then run the selected model suite:
 
 ```bash
-# DeepSeek-V2-Lite
+# DeepSeek-V2-Lite gate scenarios
 python -m pytest -q -s \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-eager]" \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph]" \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo]" \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[baseline-graph]"
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[baseline-graph]" \
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-eager-2a2f]" \
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-2a2f]" \
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo-2a2f]"
 
 # Qwen3 MoE
 python -m pytest -q -s \
@@ -67,28 +69,32 @@ python -m pytest -q -s \
 
 Success means 4 passed and 0 skipped.
 
-### Graph + DBO 2A2F
+### Local 2A1F cases
 
-This separate GPU/NPU case defaults to `0,1,2,3` (or uses `AFD_E2E_DEVICES`
-when set): the first two for Attention DP=2/TP=1 and the last two for FFN
-DP=2/TP=1/EP=2. It runs GSM8K-7.
+The 2 Attention + 1 FFN scenarios are local-only cases; CI gates do not run
+them. They use the first two devices for Attention DP2/TP1 and the third for
+FFN DP1/TP1/EP1, and run GSM8K-7.
 
 ```bash
 python -m pytest -q -s \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo-2a2f]"
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-eager-2a1f]" \
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-2a1f]" \
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo-2a1f]"
 ```
 
-For the weekly full GSM8K test, run only `afd-graph-dbo`:
+### Weekly full GSM8K
+
+For the weekly full GSM8K test, run only `afd-graph-dbo-2a2f`:
 
 ```bash
 export AFD_GSM8K_LIMIT=all
 # DeepSeek-V2-Lite
 python -m pytest -q -s \
-  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo]"
+  "tests/e2e/models/deepseek_v2_lite/test_deepseek_v2_lite.py::test_deepseek_v2_lite[afd-graph-dbo-2a2f]"
 
-# Qwen3 MoE
+# Qwen3 MoE (2A1F only)
 python -m pytest -q -s \
-  "tests/e2e/models/qwen3_moe/test_qwen3_moe.py::test_qwen3_moe[afd-graph-dbo]"
+  "tests/e2e/models/qwen3_moe/test_qwen3_moe.py::test_qwen3_moe[afd-graph-dbo-2a1f]"
 ```
 
 This evaluates all 1319 GSM8K test samples. Without `AFD_GSM8K_LIMIT`, each

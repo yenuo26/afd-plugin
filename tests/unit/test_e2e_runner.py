@@ -33,7 +33,7 @@ def test_baseline_entrypoint_uses_four_devices(monkeypatch, tmp_path):
     assert "--ffn-devices" not in command
 
 
-@pytest.mark.parametrize("scenario", ["afd-eager", "afd-graph", "afd-graph-dbo"])
+@pytest.mark.parametrize("scenario", ["afd-eager-2a1f", "afd-graph-2a1f", "afd-graph-dbo-2a1f"])
 def test_afd_entrypoint_ignores_the_fourth_device(monkeypatch, tmp_path, scenario):
     monkeypatch.setenv("AFD_E2E_BACKEND", "gpu")
     monkeypatch.setenv("AFD_E2E_DEVICES", "2,4,6,8")
@@ -43,6 +43,21 @@ def test_afd_entrypoint_ignores_the_fourth_device(monkeypatch, tmp_path, scenari
 
     assert command[command.index("--attention-devices") + 1] == "2,4"
     assert command[command.index("--ffn-devices") + 1] == "6"
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    ["afd-eager-2a2f", "afd-graph-2a2f", "afd-graph-dbo-2a2f"],
+)
+def test_afd_2a2f_entrypoint_uses_all_four_devices(monkeypatch, tmp_path, scenario):
+    monkeypatch.setenv("AFD_E2E_BACKEND", "gpu")
+    monkeypatch.setenv("AFD_E2E_DEVICES", "2,4,6,8")
+    monkeypatch.setenv("AFD_GPU_E2E_MODEL", "model")
+
+    command = deepseek_v2_lite_e2e.build_runner_command(scenario, tmp_path)
+
+    assert command[command.index("--attention-devices") + 1] == "2,4"
+    assert command[command.index("--ffn-devices") + 1] == "6,8"
 
 
 @pytest.mark.parametrize("scenario", deepseek_v2_lite_e2e.SCENARIOS)
@@ -233,7 +248,7 @@ def _args() -> argparse.Namespace:
         tp_size=1,
         attention_tp_size=None,
         ffn_tp_size=None,
-        scenario="afd-eager",
+        scenario="afd-eager-2a1f",
         baseline=False,
         cuda_graph_full_decode_only=False,
         cudagraph_capture_size=64,
@@ -282,7 +297,7 @@ def test_parse_args_rejects_legacy_fixed_scenario_options(monkeypatch, legacy_ar
             "--model",
             "model",
             "--scenario",
-            "afd-eager",
+            "afd-eager-2a1f",
             "--gsm8k-output-path",
             "results",
             *legacy_args,
@@ -299,9 +314,11 @@ def test_parse_args_rejects_legacy_fixed_scenario_options(monkeypatch, legacy_ar
     ("scenario", "expected"),
     [
         ("baseline-graph", (True, True, False, 4, 0, 1, 1)),
-        ("afd-eager", (False, False, False, 2, 1, 1, 1)),
-        ("afd-graph", (False, True, False, 2, 1, 1, 1)),
-        ("afd-graph-dbo", (False, True, True, 2, 1, 1, 1)),
+        ("afd-eager-2a1f", (False, False, False, 2, 1, 1, 1)),
+        ("afd-graph-2a1f", (False, True, False, 2, 1, 1, 1)),
+        ("afd-graph-dbo-2a1f", (False, True, True, 2, 1, 1, 1)),
+        ("afd-eager-2a2f", (False, False, False, 2, 2, 1, 1)),
+        ("afd-graph-2a2f", (False, True, False, 2, 2, 1, 1)),
         ("afd-graph-dbo-2a2f", (False, True, True, 2, 2, 1, 1)),
         ("afd-eager-async-cam", (False, False, False, 2, 2, 1, 2)),
     ],
@@ -468,8 +485,8 @@ def test_validate_topology_rejects_reused_devices(
     [
         ("baseline-graph", "gpu", ""),
         ("baseline-graph", "npu", "ascend"),
-        ("afd-eager", "gpu", "afd"),
-        ("afd-eager", "npu", "ascend,afd"),
+        ("afd-eager-2a1f", "gpu", "afd"),
+        ("afd-eager-2a1f", "npu", "ascend,afd"),
     ],
 )
 def test_build_env_uses_the_scenario_plugin_allowlist(

@@ -18,9 +18,9 @@ QWEN3_MOE_REPO_ID = "Qwen/Qwen3-30B-A3B"
 QWEN3_MOE_MAX_MODEL_LEN = 4096
 SCENARIOS = (
     "baseline-graph",
-    "afd-eager",
-    "afd-graph",
-    "afd-graph-dbo",
+    "afd-eager-2a1f",
+    "afd-graph-2a1f",
+    "afd-graph-dbo-2a1f",
 )
 
 
